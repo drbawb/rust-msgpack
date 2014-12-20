@@ -435,8 +435,9 @@ impl<'a, R: Reader> serialize::Decoder<IoError> for Decoder<R> {
     }
 
     #[inline(always)]
-    fn read_struct_field<T,F>(&mut self, _name: &str, _idx: uint, f: F) -> IoResult<T> 
+    fn read_struct_field<T,F>(&mut self, name: &str, _idx: uint, f: F) -> IoResult<T>
     where F: FnOnce(&mut Decoder<R>) -> IoResult<T> {
+        assert!(try!(self.read_str()) == name);
         f(self)
     }
 
@@ -733,8 +734,10 @@ impl<'a> serialize::Encoder<IoError> for Encoder<'a> {
         f(self)
     }
 
-    fn emit_struct_field<F>(&mut self, _name: &str, _idx: uint, f: F)  -> IoResult<()> 
+    fn emit_struct_field<F>(&mut self, name: &str, _idx: uint, f: F)  -> IoResult<()> 
     where F: FnOnce(&mut Encoder<'a>) -> IoResult<()> {
+	try!(self._emit_str_len(name.len()));
+	try!(self.wr.write(name.as_bytes()));
         f(self)
     }
 
