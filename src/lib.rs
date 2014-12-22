@@ -426,8 +426,7 @@ impl<'a, R: Reader> serialize::Decoder<IoError> for Decoder<R> {
     #[inline(always)]
     fn read_struct<T,F>(&mut self, _name: &str, len: uint, f: F) -> IoResult<T> 
     where F: FnOnce(&mut Decoder<R>) -> IoResult<T> {
-        // XXX: Why are we using a map length here?
-        if len != try!(self._read_map_len()) {
+        if len != try!(self._read_vec_len()) {
             Err(_invalid_input("invalid length for struct"))
         } else {
             f(self)
@@ -726,10 +725,10 @@ impl<'a> serialize::Encoder<IoError> for Encoder<'a> {
 
     // TODO: Option, to enable different ways to write out structs
     //       For example, to emit structs as maps/vectors.
-    // XXX: Correct to use _emit_map_len here?
+    // XXX: Maps are encoded as in-order arrays.
     fn emit_struct<F>(&mut self, _name: &str, len: uint, f: F)  -> IoResult<()> 
     where F: FnOnce(&mut Encoder<'a>) -> IoResult<()> {
-        try!(self._emit_map_len(len));
+        try!(self._emit_array_len(len));
         f(self)
     }
 
