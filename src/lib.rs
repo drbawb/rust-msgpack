@@ -4,14 +4,14 @@
 #![feature(macro_rules, globs)]
 #![allow(unused_must_use, dead_code)]
 
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 
 use std::io;
 use std::io::{BufReader, MemWriter, IoResult, IoError, InvalidInput};
 use std::str::from_utf8;
 use std::mem;
 
-use serialize::{Encodable, Decodable};
+use rustc_serialize::{Encodable, Decodable};
 
 mod rpc;
 
@@ -252,7 +252,7 @@ impl<'a, R: Reader> Decoder<R> {
 
 }
 
-impl<'a, R: Reader> serialize::Decoder<IoError> for Decoder<R> {
+impl<'a, R: Reader> rustc_serialize::Decoder<IoError> for Decoder<R> {
     #[inline(always)]
     fn read_nil(&mut self) -> IoResult<()> {
         match self._read_byte() {
@@ -516,7 +516,7 @@ impl<'a, R: Reader> serialize::Decoder<IoError> for Decoder<R> {
     }
 }
 
-impl<R: Reader> serialize::Decodable<Decoder<R>, IoError> for Value {
+impl<R: Reader> rustc_serialize::Decodable<Decoder<R>, IoError> for Value {
     fn decode(s: &mut Decoder<R>) -> IoResult<Value> {
         s.decode_value()
     }
@@ -645,7 +645,7 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> serialize::Encoder<IoError> for Encoder<'a> {
+impl<'a> rustc_serialize::Encoder<IoError> for Encoder<'a> {
     fn emit_nil(&mut self) -> IoResult<()> { self.wr.write_u8(0xc0) }
 
     #[inline(always)]
@@ -797,7 +797,7 @@ impl<'a> serialize::Encoder<IoError> for Encoder<'a> {
     }
 }
 
-impl<E: serialize::Encoder<S>, S> serialize::Encodable<E, S> for Value {
+impl<E: rustc_serialize::Encoder<S>, S> rustc_serialize::Encodable<E, S> for Value {
     fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
             Value::Nil => e.emit_nil(),
@@ -843,7 +843,7 @@ pub fn from_msgpack<'a, T: Decodable<Decoder<BufReader<'a>>, IoError>>(bytes: &'
 mod test {
     use std::collections::HashMap;
     use super::{Encoder, from_msgpack};
-    use serialize::Encodable;
+    use rustc_serialize::Encodable;
 
     macro_rules! assert_msgpack_circular(
         ($ty:ty, $inp:expr) => (

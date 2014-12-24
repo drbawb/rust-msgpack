@@ -1,6 +1,6 @@
 use super::{Value,Encoder,Decoder, _invalid_input};
-use serialize;
-use serialize::{Encodable,Decodable};
+use rustc_serialize;
+use rustc_serialize::{Encodable,Decodable};
 use std::io::{IoError, IoResult};
 
 pub enum RpcMessage {
@@ -9,7 +9,7 @@ pub enum RpcMessage {
   RpcNotification {method: String, params: Vec<Value>} // 2
 }
 
-impl<'a> serialize::Encodable<Encoder<'a>, IoError> for RpcMessage {
+impl<'a> rustc_serialize::Encodable<Encoder<'a>, IoError> for RpcMessage {
   fn encode(&self, s: &mut Encoder<'a>) -> IoResult<()> {
     match *self {
       RpcMessage::RpcRequest {msgid, ref method, ref params} => {
@@ -25,7 +25,7 @@ impl<'a> serialize::Encodable<Encoder<'a>, IoError> for RpcMessage {
   }
 }
 
-impl<R: Reader> serialize::Decodable<Decoder<R>, IoError> for RpcMessage {
+impl<R: Reader> rustc_serialize::Decodable<Decoder<R>, IoError> for RpcMessage {
   fn decode(s: &mut Decoder<R>) -> IoResult<RpcMessage> {
     let len = try!(s._read_vec_len());
     let ty: uint = try!(Decodable::decode(s));
