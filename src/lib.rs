@@ -1,20 +1,19 @@
 //! msgpack.org implementation for Rust
 
 #![crate_type = "lib"]
-#![feature(macro_rules, globs)]
 #![allow(unused_must_use, dead_code)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 
 use std::io;
 use std::io::{BufReader, MemWriter, IoResult, IoError, InvalidInput};
-use std::iter::repeat;
 use std::str::from_utf8;
 use std::mem;
+use std::num::ToPrimitive;
 
 use rustc_serialize::{Encodable, Decodable};
 
-mod rpc;
+//mod rpc;
 
 #[derive(Show)]
 pub enum Value {
@@ -253,7 +252,9 @@ impl<'a, R: Reader> Decoder<R> {
 
 }
 
-impl<'a, R: Reader> rustc_serialize::Decoder<IoError> for Decoder<R> {
+impl<'a, R: Reader> rustc_serialize::Decoder for Decoder<R> {
+    type Error = IoError;
+
     #[inline(always)]
     fn read_nil(&mut self) -> IoResult<()> {
         match self._read_byte() {
@@ -517,12 +518,13 @@ impl<'a, R: Reader> rustc_serialize::Decoder<IoError> for Decoder<R> {
     }
 }
 
-impl<R: Reader> rustc_serialize::Decodable<Decoder<R>, IoError> for Value {
-    fn decode(s: &mut Decoder<R>) -> IoResult<Value> {
-        s.decode_value()
+/*
+impl<R> rustc_serialize::Decodable for Value {
+    fn decode<D: rustc_serialize::Decoder>(s: &mut D) -> Result<Value, D::Error> {
+        let msgpack_decoder: Decoder<R> = unsafe { std::mem::transmute(s) };
     }
 }
-
+*/
 
 /// A structure for implementing serialization to Msgpack.
 pub struct Encoder<'a> {
@@ -536,11 +538,11 @@ impl<'a> Encoder<'a> {
         Encoder { wr: wr }
     }
 
-    pub fn to_msgpack<T: Encodable<Encoder<'a>, IoError>>(t: &T) -> IoResult<Vec<u8>> {
+    pub fn to_msgpack<T: Encodable>(t: &T) -> IoResult<Vec<u8>> {
         let mut m = MemWriter::new();
         unsafe {
             let mut encoder = Encoder::new(&mut m as &mut io::Writer);
-            try!(t.encode(mem::transmute(&mut encoder)));
+            try!(t.encode(&mut encoder))
         }
         Ok(m.into_inner())
     }
@@ -646,7 +648,9 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> rustc_serialize::Encoder<IoError> for Encoder<'a> {
+impl<'a> rustc_serialize::Encoder for Encoder<'a> {
+    type Error = IoError;
+
     fn emit_nil(&mut self) -> IoResult<()> { self.wr.write_u8(0xc0) }
 
     #[inline(always)]
@@ -690,8 +694,14 @@ impl<'a> rustc_serialize::Encoder<IoError> for Encoder<'a> {
     }
 
     fn emit_char(&mut self, v: char)  -> IoResult<()> {
-        let s = repeat(v).take(1).collect();
-        self.emit_str(s.as_slice())
+        let mut buf = [0; 4]; 
+        match v.encode_utf8(&mut buf) {
+            Some(len) => match from_utf8(buf.slice(0,len)) { 
+                Ok(character) => { self.emit_str(character) },
+                Err(_) => { Err(_invalid_input("not a utf-8 character")) },
+            },
+            None => { Err(_invalid_input("buffer not big enough for unicode codepoint")) },
+        }
     }
 
     fn emit_str(&mut self, v: &str) -> IoResult<()> {
@@ -798,8 +808,8 @@ impl<'a> rustc_serialize::Encoder<IoError> for Encoder<'a> {
     }
 }
 
-impl<E: rustc_serialize::Encoder<S>, S> rustc_serialize::Encodable<E, S> for Value {
-    fn encode(&self, e: &mut E) -> Result<(), S> {
+impl rustc_serialize::Encodable for Value {
+    fn encode<E: rustc_serialize::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Value::Nil => e.emit_nil(),
             Value::Boolean(b) => e.emit_bool(b),
@@ -832,9 +842,7 @@ impl<E: rustc_serialize::Encoder<S>, S> rustc_serialize::Encodable<E, S> for Val
     }
 }
 
-
-
-pub fn from_msgpack<'a, T: Decodable<Decoder<BufReader<'a>>, IoError>>(bytes: &'a [u8]) -> IoResult<T> {
+pub fn from_msgpack<'a, T: Decodable>(bytes: &'a [u8]) -> IoResult<T> {
     let rd = BufReader::new(bytes);
     let mut decoder = Decoder::new(rd);
     Decodable::decode(&mut decoder)
