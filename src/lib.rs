@@ -8,6 +8,7 @@ extern crate "rustc-serialize" as rustc_serialize;
 
 use std::io;
 use std::io::{BufReader, MemWriter, IoResult, IoError, InvalidInput};
+use std::iter::repeat;
 use std::str::from_utf8;
 use std::mem;
 
@@ -689,7 +690,7 @@ impl<'a> rustc_serialize::Encoder<IoError> for Encoder<'a> {
     }
 
     fn emit_char(&mut self, v: char)  -> IoResult<()> {
-        let s = String::from_char(1, v); // XXX
+        let s = repeat(v).take(1).collect();
         self.emit_str(s.as_slice())
     }
 
