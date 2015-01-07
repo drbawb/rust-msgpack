@@ -15,7 +15,7 @@ use rustc_serialize::{Encodable, Decodable};
 
 mod rpc;
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Value {
     Nil,
     Boolean(bool),
@@ -916,7 +916,7 @@ mod test {
       assert_msgpack_circular!(char, 'a');
     }
 
-    #[deriving(Encodable,Decodable,PartialEq,Show)]
+    #[derive(Encodable,Decodable,PartialEq,Show)]
     struct S {
       f: u8,
       g: u16,
@@ -946,7 +946,7 @@ mod test {
         assert_msgpack_circular!(String, String::from_char(0x10000, 'a'));
     }
 
-    #[deriving(Encodable,Decodable,PartialEq,Show)]
+    #[derive(Encodable,Decodable,PartialEq,Show)]
     enum Animal {
         Dog,
         Frog(String, uint),
